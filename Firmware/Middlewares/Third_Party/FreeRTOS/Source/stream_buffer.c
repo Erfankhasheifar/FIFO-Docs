@@ -8,5 +8,5 @@
 #include "stream_buffer.h"
 
 #if ( configUSE_STREAM_BUFFERS == 1 )
-#error "configUSE_STREAM_BUFFERS is enabled but stream_buffer.c only contains a stub."
+    #error "configUSE_STREAM_BUFFERS is enabled but stream_buffer.c only contains a stub."
 #endif

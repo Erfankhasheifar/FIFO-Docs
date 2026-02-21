@@ -60,10 +60,6 @@ typedef struct tskTaskControlBlock
         uint8_t ucDeleted;
     #endif
 
-    #if ( INCLUDE_vTaskDelete == 1 )
-        uint8_t ucDeleted;
-    #endif
-
     uint8_t ucStaticallyAllocated;
 
 } TCB_t;
