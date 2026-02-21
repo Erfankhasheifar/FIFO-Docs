@@ -99,12 +99,12 @@ ADBUS5  (D5)    ──────► PE5  (FIFO1_D5)
 ADBUS6  (D6)    ──────► PE6  (FIFO1_D6)
 ADBUS7  (D7)    ──────► PE7  (FIFO1_D7)
 
-ACBUS0  (RXF#)  ──────► PG0  (FIFO1_RXF)  [input to MCU, active-low]
-ACBUS1  (TXE#)  ──────► PG1  (FIFO1_TXE)  [input to MCU, active-low]
-ACBUS2  (RD#)   ◄──────  PG2  (FIFO1_RD)   [output from MCU, active-low]
-ACBUS3  (WR#)   ◄──────  PG3  (FIFO1_WR)   [tied high – read-only mode]
-ACBUS5  (CLKOUT)──────► PG4  (FIFO1_CLK)  [60 MHz bus clock, input]
-ACBUS6  (OE#)   ◄──────  PG5  (FIFO1_OE)   [output from MCU, active-low]
+ACBUS0  (RXF#)  ──────► PC0  (FIFO1_RXF)  [input to MCU, active-low]
+ACBUS1  (TXE#)  ──────► PC1  (FIFO1_TXE)  [input to MCU, active-low]
+ACBUS2  (RD#)   ◄──────  PC2  (FIFO1_RD)   [output from MCU, active-low]
+ACBUS3  (WR#)   ◄──────  PC3  (FIFO1_WR)   [tied high – read-only mode]
+ACBUS5  (CLKOUT)──────► PC4  (FIFO1_CLK)  [60 MHz bus clock, input]
+ACBUS6  (OE#)   ◄──────  PC5  (FIFO1_OE)   [output from MCU, active-low]
 
 GND             ──────── GND
 ```
@@ -123,12 +123,12 @@ PF5  (FIFO2_D5) ──────► ADBUS5  (D5)
 PF6  (FIFO2_D6) ──────► ADBUS6  (D6)
 PF7  (FIFO2_D7) ──────► ADBUS7  (D7)
 
-PG6  (FIFO2_RXF) ◄──────  ACBUS0  (RXF#)  [optional, input]
-PG7  (FIFO2_TXE) ◄──────  ACBUS1  (TXE#)  [input to MCU, active-low]
-PG8  (FIFO2_RD)  ──────►  ACBUS2  (RD#)   [optional output]
-PG9  (FIFO2_WR)  ──────►  ACBUS3  (WR#)   [output from MCU, active-low]
-PG10 (FIFO2_CLK) ◄──────  ACBUS5  (CLKOUT)[optional 60 MHz input]
-PG11 (FIFO2_OE)  ──────►  ACBUS6  (OE#)   [optional output]
+PD0  (FIFO2_RXF) ◄──────  ACBUS0  (RXF#)  [optional, input]
+PD1  (FIFO2_TXE) ◄──────  ACBUS1  (TXE#)  [input to MCU, active-low]
+PD2  (FIFO2_RD)  ──────►  ACBUS2  (RD#)   [optional output]
+PD3  (FIFO2_WR)  ──────►  ACBUS3  (WR#)   [output from MCU, active-low]
+PD4  (FIFO2_CLK) ◄──────  ACBUS5  (CLKOUT)[optional 60 MHz input]
+PD5  (FIFO2_OE)  ──────►  ACBUS6  (OE#)   [optional output]
 
 GND              ──────── GND
 ```
@@ -141,20 +141,72 @@ GND              ──────── GND
 ## Firmware Setup
 
 ### Prerequisites
-- **STM32CubeIDE 1.14+** with STM32Cube FW_H7 V1.11.0 pack installed.
+- **STM32CubeIDE 1.14+** with **STM32Cube FW_H7 V1.11.0** (or later) pack installed.
 - ST-Link v2 or any SWD programmer.
+
+### Project Structure
+
+The repository now includes all required FreeRTOS V10.3.1 source files:
+
+```
+Firmware/
+├── FIFO_Bridge.ioc                 CubeMX configuration
+├── Core/
+│   ├── Inc/
+│   │   ├── FreeRTOSConfig.h        FreeRTOS configuration for STM32H750
+│   │   ├── cmsis_os.h              CMSIS-RTOS2 type declarations
+│   │   ├── fifo_bridge.h           GPIO macros & task prototypes
+│   │   ├── main.h                  HAL includes & error handler
+│   │   └── ring_buffer.h           Lock-free SPSC ring buffer
+│   └── Src/
+│       ├── main.c                  Clock + GPIO init, FreeRTOS startup
+│       └── fifo_bridge.c           ReaderTask + WriterTask
+└── Middlewares/Third_Party/FreeRTOS/Source/
+    ├── include/                    FreeRTOS kernel headers
+    ├── portable/GCC/ARM_CM7/r0p1/ Cortex-M7 port (port.c, portmacro.h)
+    ├── portable/MemMang/heap_4.c  Dynamic memory allocator
+    ├── CMSIS_RTOS_V2/cmsis_os2.c  CMSIS-RTOS2 → FreeRTOS wrapper
+    ├── list.c                      Linked list implementation
+    └── tasks.c                     Task scheduler
+```
+
+### Importing into STM32CubeIDE
+
+> **Note:** The `.ioc` file must be opened from *within* an STM32CubeIDE project.
+> Opening it directly from File Explorer shows a blank page because CubeMX
+> requires a project context.
+
+**Method A – Fresh project (recommended):**
+
+1. Open **STM32CubeIDE**.
+2. `File → New → STM32 Project from an Existing STM32CubeMX Configuration File (.ioc)`.
+3. Browse to `Firmware/FIFO_Bridge.ioc` → **Finish**.
+4. CubeMX will open. Click **Generate Code** to populate the HAL and startup
+   files (the FreeRTOS middleware is already in the repository).
+5. In the **C/C++ Build → Settings** for each configuration add these
+   **include paths**:
+   - `${ProjDirPath}/Core/Inc`
+   - `${ProjDirPath}/Middlewares/Third_Party/FreeRTOS/Source/include`
+   - `${ProjDirPath}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1`
+6. Add the following **source files** to the build (right-click → *Add Files*):
+   - `Middlewares/Third_Party/FreeRTOS/Source/list.c`
+   - `Middlewares/Third_Party/FreeRTOS/Source/tasks.c`
+   - `Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1/port.c`
+   - `Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c`
+   - `Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c`
+
+**Method B – Import existing project:**
+
+1. `File → Import → General → Existing Projects into Workspace`.
+2. Set the root directory to the `Firmware/` folder.
+3. Select `FIFO_Bridge` and click **Finish**.
+4. If the project doesn't have a `.cproject` file, follow Method A instead.
 
 ### Steps
 
-1. **Open project** in STM32CubeIDE:
-   `File → Open Projects from File System → Firmware/`
-
-2. **Regenerate code** (optional – only if you change the `.ioc`):
-   Double-click `FIFO_Bridge.ioc` → **Generate Code**.
-
-3. **Build**: `Project → Build All` (Ctrl+B).
-
-4. **Flash**: `Run → Debug` with ST-Link connected to the DevEBox SWD header.
+1. **Import** the project using one of the methods above.
+2. **Build**: `Project → Build All` (Ctrl+B).
+3. **Flash**: `Run → Debug` with ST-Link connected to the DevEBox SWD header.
 
 ### Clock Configuration
 The `.ioc` is set up for a **25 MHz HSE crystal** (fitted on the DevEBox):
@@ -264,10 +316,11 @@ CRC32 uses the standard ISO 3309 polynomial (same as zlib/zip).
 |---------|-------------|-----|
 | `D2XX error FT_DEVICE_NOT_FOUND` | FT_Prog not applied, or wrong serial | Re-run FT_Prog; check serial in app |
 | `D2XX error FT_DEVICE_NOT_OPENED` | VCP driver still bound | Switch to D2XX Direct in FT_Prog |
-| Firmware hangs at first byte | OE# not asserted / wiring issue | Check PG5 → ACBUS6 and GND |
+| Firmware hangs at first byte | OE# not asserted / wiring issue | Check PC5 → ACBUS6 and GND |
 | CRC mismatch | Data corruption in GPIO wiring | Shorten wires; check common GND |
 | Transfer very slow (< 1 MB/s) | USB HS not negotiated | Use USB 2.0 port; check cable |
 | `InvalidOperationException` in Receiver | Header bytes not yet available | Sender must start first; retry |
+| GPIO signals absent / firmware stuck | DevEBox variant does not expose Port G | This firmware uses **PC0–PC5** (FIFO1) and **PD0–PD5** (FIFO2) instead of PG. Verify wiring matches the table above; some early DevEBox silk-screens label Port G but the header pins are not connected. |
 
 ---
 
