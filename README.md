@@ -320,6 +320,8 @@ CRC32 uses the standard ISO 3309 polynomial (same as zlib/zip).
 | CRC mismatch | Data corruption in GPIO wiring | Shorten wires; check common GND |
 | Transfer very slow (< 1 MB/s) | USB HS not negotiated | Use USB 2.0 port; check cable |
 | `InvalidOperationException` in Receiver | Header bytes not yet available | Sender must start first; retry |
+| `.ioc` shows blank page in IDE | IOC opened outside a project context | Use *File → New → STM32 Project from .ioc* (see Firmware Setup above) |
+| Build error `undefined reference to osThreadYield` | FreeRTOS source not in build | Add the source files listed in the Importing section to the build |
 | GPIO signals absent / firmware stuck | DevEBox variant does not expose Port G | This firmware uses **PC0–PC5** (FIFO1) and **PD0–PD5** (FIFO2) instead of PG. Verify wiring matches the table above; some early DevEBox silk-screens label Port G but the header pins are not connected. |
 
 ---
